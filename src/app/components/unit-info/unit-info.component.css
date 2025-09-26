@@ -1,0 +1,41 @@
+/* 
+  Здесь мы тоже используем ::ng-deep, чтобы стили применились к тегам p, span,
+  которые будут создаваться динамически внутри #selected-unit-info.
+*/
+:host ::ng-deep #selected-unit-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+:host ::ng-deep #selected-unit-info span {
+  font-weight: bold;
+  color: #fff;
+}
+
+:host ::ng-deep #selected-unit-info label {
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+:host ::ng-deep #selected-unit-info input {
+  padding: 6px;
+  margin-bottom: 4px;
+}
+
+:host ::ng-deep .order-buttons button {
+  background-color: #f0ad4e;
+  margin-top: 10px;
+}
+
+:host ::ng-deep .order-buttons button:hover {
+  background-color: #ec971f;
+}
+
+#delete-unit-btn {
+  background-color: #c9302c;
+}
+
+#delete-unit-btn:hover {
+  background-color: #d9534f;
+}

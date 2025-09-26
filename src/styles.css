@@ -1,0 +1,12 @@
+/* Глобальные стили, которые применяются ко всей странице */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #333;
+  color: #f0f0f0;
+  overflow: hidden; /* Запрещаем прокрутку всей страницы */
+}
