@@ -3,12 +3,17 @@ import {
   AfterViewInit,
   ElementRef,
   ViewChild,
-  OnInit,
   OnDestroy,
-  HostListener,
+  Output,
+  EventEmitter,
 } from '@angular/core';
 import * as THREE from 'three';
-import { GLTFLoader, OrbitControls } from 'three-stdlib';
+import { OrbitControls } from 'three-stdlib';
+
+export interface MapObjectInfo {
+  id: number;
+  position: THREE.Vector3;
+}
 
 @Component({
   selector: 'app-map3d',
@@ -18,24 +23,29 @@ import { GLTFLoader, OrbitControls } from 'three-stdlib';
 export class Map3DComponent implements AfterViewInit, OnDestroy {
   @ViewChild('rendererContainer', { static: true }) container!: ElementRef;
 
+  @Output() objectClicked = new EventEmitter<MapObjectInfo>();
+
   private scene!: THREE.Scene;
   private camera!: THREE.OrthographicCamera;
   private renderer!: THREE.WebGLRenderer;
   private controls!: OrbitControls;
   private animationId!: number;
 
-  private moveSpeed = 2;
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
 
-  ngAfterViewInit(): void {
+  private objectCounter = 0;
+  private objects: THREE.Mesh[] = []; // 🔹 только кликабельные объекты
+  private ground!: THREE.Mesh; // 🔹 земля сохраняется отдельно
+
+  async ngAfterViewInit(): Promise<void> {
     this.initScene();
-    this.addObjects();
-    this.animate();
-  }
 
-  ngOnDestroy(): void {
-    cancelAnimationFrame(this.animationId);
-    this.renderer.dispose();
-    this.controls.dispose();
+    await this.addGround(); // ждём загрузку земли
+    await this.addObjects(); // ждём загрузку зданий или моделей
+
+    this.animate();
+    this.renderer.domElement.addEventListener('click', this.onClick, false);
   }
 
   private initScene(): void {
@@ -44,11 +54,9 @@ export class Map3DComponent implements AfterViewInit, OnDestroy {
     const aspect = width / height;
     const frustumSize = 100;
 
-    // Сцена
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xa0a0a0);
 
-    // Камера сверху
     this.camera = new THREE.OrthographicCamera(
       (-frustumSize * aspect) / 2,
       (frustumSize * aspect) / 2,
@@ -57,47 +65,99 @@ export class Map3DComponent implements AfterViewInit, OnDestroy {
       0.1,
       1000
     );
-    this.camera.position.set(0, 50, 0);
+    this.camera.position.set(100, 200, 100);
     this.camera.lookAt(0, 0, 0);
 
-    // Рендерер
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(width, height);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.nativeElement.appendChild(this.renderer.domElement);
 
-    // Свет
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    // 🔹 Ambient light (фон)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(50, 100, 50);
+    // 🔹 Directional light (солнце)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(70, 100, 120);
+    directionalLight.castShadow = true;
+
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 500;
+
+    const d = 200; // размер области для теней
+    directionalLight.shadow.camera.left = -d;
+    directionalLight.shadow.camera.right = d;
+    directionalLight.shadow.camera.top = d;
+    directionalLight.shadow.camera.bottom = -d;
+
     this.scene.add(directionalLight);
 
-    // Контролы (вид сверху)
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableRotate = false; // отключаем наклон камеры
+    this.controls.enableRotate = true;
     this.controls.enablePan = true;
     this.controls.zoomSpeed = 1.5;
   }
 
-  private addObjects(): void {
-    // Плоскость (земля)
-    const planeGeometry = new THREE.PlaneGeometry(200, 200);
-    const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
-    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    plane.rotation.x = -Math.PI / 2;
-    this.scene.add(plane);
+  /** 🔹 Асинхронная загрузка земли (с текстурой) */
+  private addGround(): Promise<void> {
+    return new Promise((resolve) => {
+      const loader = new THREE.TextureLoader();
+      loader.load(
+        './city.jpg',
+        (texture) => {
+          const planeGeometry = new THREE.PlaneGeometry(200, 200);
+          const planeMaterial = new THREE.MeshStandardMaterial({ map: texture });
 
-    // Несколько кубов (как здания)
-    const boxMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    for (let i = -50; i <= 50; i += 20) {
-      for (let j = -50; j <= 50; j += 20) {
-        const boxGeometry = new THREE.BoxGeometry(5, Math.random() * 20 + 5, 5);
-        const box = new THREE.Mesh(boxGeometry, boxMaterial);
-        box.position.set(i, box.geometry.parameters.height / 2, j);
-        this.scene.add(box);
+          this.ground = new THREE.Mesh(planeGeometry, planeMaterial);
+          this.ground.rotation.x = -Math.PI / 2;
+          this.ground.name = 'ground';
+          this.ground.receiveShadow = true; // 🔹 земля принимает тени
+
+          this.scene.add(this.ground);
+          resolve();
+        },
+        undefined,
+        (err) => {
+          console.error('Ошибка загрузки текстуры земли', err);
+          // создаём серую землю по умолчанию
+          const planeGeometry = new THREE.PlaneGeometry(200, 200);
+          const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+          this.ground = new THREE.Mesh(planeGeometry, planeMaterial);
+          this.ground.rotation.x = -Math.PI / 2;
+          this.ground.name = 'ground';
+          this.ground.receiveShadow = true;
+          this.scene.add(this.ground);
+          resolve();
+        }
+      );
+    });
+  }
+
+  /** 🔹 Асинхронная загрузка объектов (можно заменить на модели) */
+  private addObjects(): Promise<void> {
+    return new Promise((resolve) => {
+      const boxMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+      for (let i = -50; i <= 50; i += 20) {
+        for (let j = -50; j <= 50; j += 20) {
+          const boxGeometry = new THREE.BoxGeometry(5, Math.random() * 20 + 5, 5);
+          const box = new THREE.Mesh(boxGeometry, boxMaterial);
+          box.position.set(i, box.geometry.parameters.height / 2, j);
+
+          box.castShadow = true; // 🔹 объекты отбрасывают тени
+          box.receiveShadow = true; // 🔹 и принимают
+
+          this.scene.add(box);
+          this.objects.push(box); // делаем кликабельным
+        }
       }
-    }
+
+      resolve();
+    });
   }
 
   private animate = () => {
@@ -106,23 +166,51 @@ export class Map3DComponent implements AfterViewInit, OnDestroy {
     this.renderer.render(this.scene, this.camera);
   };
 
-  // Управление WASD для перемещения камеры
-  @HostListener('window:keydown', ['$event'])
-  handleKeyDown(event: KeyboardEvent) {
-    switch (event.key.toLowerCase()) {
-      case 'w':
-        this.camera.position.y += this.moveSpeed; // вверх по Y (камера смотрит вниз)
-        break;
-      case 's':
-        this.camera.position.y -= this.moveSpeed;
-        break;
-      case 'a':
-        this.camera.position.x -= this.moveSpeed;
-        break;
-      case 'd':
-        this.camera.position.x += this.moveSpeed;
-        break;
+  private onClick = (event: MouseEvent) => {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // 1) Проверяем клик по объектам
+    const intersectsObjects = this.raycaster.intersectObjects(this.objects);
+    if (intersectsObjects.length > 0) {
+      const mesh = intersectsObjects[0].object as THREE.Mesh;
+      const index = this.objects.indexOf(mesh);
+      if (index !== -1) {
+        this.objectClicked.emit({
+          id: index,
+          position: mesh.position.clone(),
+        });
+      }
+      return;
     }
-    this.camera.updateProjectionMatrix();
+
+    // 2) Проверяем клик по земле
+    if (!this.ground) return;
+    const intersects = this.raycaster.intersectObject(this.ground);
+    if (intersects.length > 0) {
+      const point = intersects[0].point;
+
+      const sphereGeometry = new THREE.SphereGeometry(2, 16, 16);
+      const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+      sphere.position.set(point.x, 2, point.z);
+      sphere.castShadow = true;
+      sphere.receiveShadow = true;
+
+      this.scene.add(sphere);
+      this.objects.push(sphere); // делаем кликабельным
+      this.objectCounter++;
+    }
+  };
+
+  ngOnDestroy(): void {
+    cancelAnimationFrame(this.animationId);
+    this.renderer.dispose();
+    this.controls.dispose();
+    this.renderer.domElement.removeEventListener('click', this.onClick);
   }
 }
