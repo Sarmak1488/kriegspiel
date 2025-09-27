@@ -1,25 +1,12 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
-
-// Импортируем классы дочерних компонентов.
-// Пути теперь правильные, так как файлы переименованы.
-import { GameCanvasComponent } from './components/game-canvas/game-canvas.component';
-import { UiPanelComponent } from './components/ui-panel/ui-panel.component';
+import { Map3DComponent } from './components/map3d/map3d.component';
+import { UnitPanelComponent } from './components/unit-panel/unit-panel.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  // "Регистрируем" дочерние компоненты, чтобы HTML их распознал
-  imports: [
-    CommonModule,
-    GameCanvasComponent,
-    UiPanelComponent
-  ],
-  // Указываем правильные пути к файлам с .component
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
+  imports: [Map3DComponent, UnitPanelComponent],
 })
-export class AppComponent {
-  title = 'kriegspiel-angular';
-}
+export class AppComponent {}
