@@ -10,7 +10,7 @@ import {
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 
-interface MapObjectInfo {
+export interface MapObjectInfo {
   id: number;
   position: THREE.Vector3;
 }

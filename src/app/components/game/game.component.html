@@ -1,0 +1,9 @@
+<div class="app-container">
+  @let selectedObjectInfo = selectedObjectInfo$ | async;
+  <div class="map-area">
+    <app-map3d (objectClicked)="objectClick($event)"></app-map3d>
+  </div>
+  <div class="panel-area">
+    <app-unit-panel [selectedObjectInfo]="selectedObjectInfo"></app-unit-panel>
+  </div>
+</div>
