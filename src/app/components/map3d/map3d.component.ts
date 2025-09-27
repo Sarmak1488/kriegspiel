@@ -75,9 +75,11 @@ export class Map3DComponent implements AfterViewInit, OnDestroy {
 
     // Контролы (вид сверху)
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableRotate = false; // отключаем наклон камеры
+    this.controls.enableRotate = true; // отключаем наклон камеры
     this.controls.enablePan = true;
     this.controls.zoomSpeed = 1.5;
+    this.controls.minPolarAngle = 0; // минимальный угол
+    this.controls.maxPolarAngle = Math.PI / 2;
   }
 
   private addObjects(): void {
