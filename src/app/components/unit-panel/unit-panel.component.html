@@ -1,0 +1,16 @@
+<mat-card>
+  <mat-card-title>{{ selectedUnit?.name }}</mat-card-title>
+  <mat-card-content>
+    <p>Тип: {{ selectedUnit?.type }}</p>
+    <p>Урон: {{ selectedUnit?.baseDamage }}</p>
+    <p>Скорость: {{ selectedUnit?.baseSpeed }}</p>
+    <p>Броня: {{ selectedUnit?.armor }}</p>
+    <p>Состояние: {{ selectedUnit?.state }}</p>
+  </mat-card-content>
+  <mat-card-actions>
+    <button mat-raised-button color="primary" (click)="defend()">Укрепиться</button>
+    <button mat-raised-button color="warn" (click)="suppress()">Подавить</button>
+    <button mat-raised-button (click)="reset()">Сброс</button>
+    <button mat-button>1212</button>
+  </mat-card-actions>
+</mat-card>

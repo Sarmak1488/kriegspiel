@@ -1,18 +1,14 @@
-/* 
-  :host - это сам тег <app-root>. Мы растягиваем его на всю высоту родителя (body)
-  и делаем его flex-контейнером.
-*/
-:host {
+.app-container {
   display: flex;
-  height: 100%;
+  height: 100vh;
 }
-
-/* 
-  #game-container - это div внутри нашего компонента.
-  Он тоже становится flex-контейнером и занимает всё доступное пространство.
-  Именно он заставит холст и панель встать в ряд.
-*/
-#game-container {
-  display: flex;
-  flex-grow: 1;
+.map-area {
+  flex: 3;
+  background: #333;
+}
+.panel-area {
+  flex: 1;
+  padding: 1rem;
+  background: #9c9696;
+  overflow-y: auto;
 }
